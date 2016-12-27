@@ -4,9 +4,6 @@
 # This is a common source of Android security bugs.
 #
 import /init.environ.rc
-import init.ssd.rc
-import init.no_ssd.rc
-import init.ssd_nomuser.rc
 import init.fon.rc
 import init.aee.rc
 
@@ -14,9 +11,6 @@ import init.aee.rc
 on early-init
     # Set init and its forked children's oom_adj.
     write /proc/1/oom_score_adj -1000
-
-    # Apply strict SELinux checking of PROT_EXEC on mmap/mprotect calls.
-    write /sys/fs/selinux/checkreqprot 0
 
     # Set the security context for the init process.
     # This should occur before anything else (e.g. ueventd) is started.
@@ -35,7 +29,7 @@ on early-init
 on init
 sysclktz 0
 
-loglevel 5
+loglevel 3
 
 # Backward compatibility
     symlink /system/etc /etc
@@ -59,8 +53,6 @@ loglevel 5
     mkdir /mnt/shell 0700 shell shell
     mkdir /mnt/media_rw 0700 media_rw media_rw
     mkdir /storage 0751 root sdcard_r
-
-    mkdir /mnt/cd-rom 0000 system system
 
     # Directory for putting things only root should see.
     mkdir /mnt/secure 0700 root root
@@ -113,7 +105,6 @@ on late-init
     trigger boot
 
 on fs
-    write /proc/bootprof "INIT:Mount_START"
     mount_all /fstab.mt6795
     # change partition permissions
     exec /system/bin/chmod 0660 /dev/block/platform/mtk-msdc.0/by-name/proinfo
@@ -130,14 +121,8 @@ on fs
     exec /system/bin/chown root:system /dev/block/platform/mtk-msdc.0/by-name/secro
     exec /system/bin/chmod 0660 /dev/block/platform/mtk-msdc.0/by-name/seccfg
     exec /system/bin/chown root:system /dev/block/platform/mtk-msdc.0/by-name/seccfg
-    write /proc/bootprof "INIT:Mount_END"
 
 on post-fs
-    chown system system /protect_f
-    chmod 0770 /protect_f
-
-    chown system system /protect_s
-    chmod 0770 /protect_s
     # once everything is setup, no need to modify /
     mount rootfs rootfs / ro remount
     
@@ -163,7 +148,6 @@ on post-fs-data
 
 
 # create basic filesystem structure
-    mkdir /data/nvram 2770 root system
     mkdir /data/misc 01771 system misc
     mkdir /data/misc/bluetoothd 0770 bluetooth bluetooth
     mkdir /data/misc/bluetooth 0770 system system
@@ -184,8 +168,6 @@ on post-fs-data
     mkdir /data/app-asec 0700 root root
     mkdir /data/app 0771 system system
     mkdir /data/property 0700 root root
-    mkdir /data/ssh 0750 root shell
-    mkdir /data/ssh/empty 0700 root root
 
     # create the lost+found directories, so as to enforce our permissions
     mkdir /data/lost+found 0770
@@ -194,45 +176,7 @@ on post-fs-data
     chown root root /data/lost+found
     chmod 0770 /data/lost+found
 
-    # H264 Decoder
-    chmod 777 /dev/MT6516_H264_DEC
-
-    # Internal SRAM Driver
-    chmod 777 /dev/MT6516_Int_SRAM
-
-    # MM QUEUE Driver
-    chmod 777 /dev/MT6516_MM_QUEUE
-
-    # MPEG4 Decoder
-    chmod 777 /dev/MT6516_MP4_DEC
-
-    # MPEG4 Encoder
-    chmod 777 /dev/MT6516_MP4_ENC
-
-    # OpenCORE proxy config
-    chmod 0666 /data/http-proxy-cfg
-
-	# OpenCORE player config
-	chmod 0666 /etc/player.cfg
-
-    # load driver base driver
-    insmod /system/lib/modules/mtk_drvb_73.ko
-    mknod /dev/drvb c 176 0
-    chmod 0666 /dev/drvb
-    
-    # Autok
-    chown root system /sys/autok/debug
-    chown root system /sys/autok/param_count
-    chown root system /sys/autok/ready
-    chown root system /sys/autok/ss_corner
-    chown root system /sys/autok/suggest_vol
-    chown root system /sys/autok/stage1/3/DONE
-    chown root system /sys/autok/stage1/3/PARAMS
-    chown root system /sys/autok/stage1/3/VOLTAGE
-    chown root system /sys/autok/stage1/3/LOG
-    chown root system /sys/autok/stage2/3
-    
-    # WiFi
+        # WiFi
     mkdir /data/misc/wifi 0770 system wifi
     mkdir /data/misc/wifi/sockets 0770 system wifi
     #Remove unused folder 
@@ -267,66 +211,8 @@ on post-fs-data
     # RTC
     mkdir /data/misc/rtc 0770 system system
 
-
-    # M4U
-    #insmod /system/lib/modules/m4u.ko
-    #mknod /dev/M4U_device c 188 0
-    chmod 0444 /dev/M4U_device
-    	
     # Sensor
     chmod 0666 /dev/sensor
-
-    # Android SEC related device nodes
-    insmod /system/lib/modules/sec.ko
-    chmod 0660 /dev/sec
-    chown root system /dev/sec
-    
-    # device info interface
-    chmod 0444 /dev/devmap
-    chown root media /dev/devmap
-
-    #change partition permission
-    chmod 0640 /mtd@sec_ro
-    chown root system /mtd@sec_ro
-
-    chmod 0640 /mtd@preloader
-    chown root system /mtd@preloader
-
-    chmod 0660 /mtd@pro_info
-    chown root system /mtd@pro_info
-
-    chmod 0640 /mtd@bootimg
-    chown root system /mtd@bootimg
-
-    chmod 0640 /mtd@recovery
-    chown root system /mtd@recovery
-
-    chmod 0660 /mtd@nvram
-    chown root system /mtd@nvram
-
-    chmod 0660 /mtd@seccfg
-    chown root system /mtd@seccfg
-
-    chmod 0660 /mtd@misc
-    chown root system /mtd@misc
-  
-    chmod 0666 /dev/uio0
-
-    #otp
-    chmod 0660 /proc/driver/otp
-    chown root system /proc/driver/otp
-    
-    #autok
-    chown root system /sys/autok/debug
-    chown root system /sys/autok/param_count
-    chown root system /sys/autok/ready
-    chown root system /sys/autok/ss_corner
-    chown root system /sys/autok/suggest_vol
-    chown root system /sys/autok/stage1/3/DONE
-    chown root system /sys/autok/stage1/3/PARAMS
-    chown root system /sys/autok/stage1/3/VOLTAGE
-    chown root system /sys/autok/stage1/3/LOG
-    chown root system /sys/autok/stage2/3
 
     # Separate location for storing security policy files on data
     mkdir /data/security 0711 system system
@@ -384,7 +270,6 @@ on property:vold.decrypt=trigger_restart_framework
     start nvram_daemon
     class_start main
     class_start late_start
-    start permission_check
 
 on property:vold.decrypt=trigger_shutdown_framework
     class_reset late_start
@@ -401,6 +286,7 @@ service logd /system/bin/logd
     socket logdr seqpacket 0666 logd logd
     socket logdw dgram 0222 logd logd
     seclabel u:r:logd:s0
+    disabled
 
 service console /system/bin/sh
     class core
@@ -426,7 +312,6 @@ service adbd /sbin/adbd --root_seclabel=u:r:su:s0
 service vold /system/bin/vold
     class core
     socket vold stream 0660 root mount
-    ioprio be 2
 
 # One shot invocation to deal with encrypted volume.
 service defaultcrypto /system/bin/vdc --wait cryptfs mountdefaultencrypted
@@ -447,6 +332,7 @@ service autokd /system/bin/autokd
     class core
     user root 
     group system
+    disabled
 
 service meta_tst /system/bin/meta_tst
 
@@ -455,6 +341,7 @@ service nvram_daemon /system/bin/nvram_daemon
     user root
     group system
     oneshot
+    disabled
 
 service debuggerd /system/bin/debuggerd
     class main
@@ -464,6 +351,7 @@ service debuggerd64 /system/bin/debuggerd64
 
 service mobile_log_d /system/bin/mobile_log_d
     class main
+    disabled
 
 on property:ro.boot.mblogenable=0    
     stop mobile_log_d    
