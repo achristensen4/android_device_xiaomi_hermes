@@ -8,9 +8,6 @@ on early-init
     # Set init and its forked children's oom_adj.
         write /proc/1/oom_score_adj -1000
 
-    # Apply strict SELinux checking of PROT_EXEC on mmap/mprotect calls.
-    write /sys/fs/selinux/checkreqprot 0
-
     # Set the security context for the init process.
     # This should occur before anything else (e.g. ueventd) is started.
     setcon u:r:init:s0
@@ -22,8 +19,6 @@ on early-init
 
     write /proc/bootprof "INIT: usr/eng build setting"
 # create mountpoints
-    mkdir /protect_f 0771 system system
-    mkdir /protect_s 0771 system system
     mkdir /mnt 0775 root system
     mkdir /storage 0055 system sdcard_r
     mkdir /storage/sdcard0 0000 system system
@@ -37,7 +32,7 @@ on init
 
 sysclktz 0
 
-loglevel 5
+loglevel 3
 
 # Backward compatibility
     symlink /system/etc /etc
@@ -75,7 +70,6 @@ loglevel 5
     write /proc/sys/kernel/sched_latency_ns 10000000
     write /proc/sys/kernel/sched_wakeup_granularity_ns 2000000
     write /proc/sys/kernel/sched_compat_yield 1
-    write /proc/sys/kernel/sched_child_runs_first 0
 
     # Healthd can trigger a full boot from charger mode by signaling this
 # property when the power button is held.
@@ -103,7 +97,6 @@ on late-init
     trigger boot
 
 on fs
-    write /proc/bootprof "INIT:Mount_START"
     mount_all /fstab.mt6795
     # change partition permissions
     exec /system/bin/chmod 0660 /dev/block/platform/mtk-msdc.0/by-name/proinfo
@@ -120,14 +113,8 @@ on fs
     exec /system/bin/chown root:system /dev/block/platform/mtk-msdc.0/by-name/secro
     exec /system/bin/chmod 0660 /dev/block/platform/mtk-msdc.0/by-name/seccfg
     exec /system/bin/chown root:system /dev/block/platform/mtk-msdc.0/by-name/seccfg
-    write /proc/bootprof "INIT:Mount_END"
 
 on post-fs
-    chown system system /protect_f
-    chmod 0770 /protect_f
-
-    chown system system /protect_s
-    chmod 0770 /protect_s
     # once everything is setup, no need to modify /
     mount rootfs rootfs / ro remount
     chown system system /system/data
@@ -178,7 +165,6 @@ on post-fs-data
     chmod 0220 /proc/sysrq-trigger
 
 # create basic filesystem structure
-    mkdir /data/nvram 2770 root system
     mkdir /data/misc 01771 system misc
     mkdir /data/misc/bluetoothd 0770 bluetooth bluetooth
     mkdir /data/misc/bluetooth 0770 system system
@@ -249,16 +235,9 @@ on post-fs-data
     mkdir /data/nvram/md  0770 root system
     mkdir /data/nvram/md2 0770 root system
 
-#  Build-in Modified - S
-#    insmod /system/lib/modules/ccci_plat.ko
-#    insmod /system/lib/modules/ccci.ko
-#  Build-in Modified - E
-#   chown ccci ccci /sys/class/BOOT/BOOT/boot/md
-    chown radio radio /sys/kernel/ccci/boot
-
     # M4U
-    #insmod /system/lib/modules/m4u.ko
-    #mknod /dev/M4U_device c 188 0
+    insmod /system/lib/modules/m4u.ko
+    mknod /dev/M4U_device c 188 0
     chmod 0444 /dev/M4U_device
     
     # Sensor
@@ -267,12 +246,6 @@ on post-fs-data
     chmod 0666 /dev/msensor
     chmod 0666 /dev/gsensor
     chmod 0666 /dev/alsps
-
-    #VideoCodec
-    chmod 0666 /dev/Vcodec
-
-
-    mkdir /data/amit/
 
     # GPIO
     chmod 0666 /dev/mtgpio
@@ -340,7 +313,6 @@ on property:vold.decrypt=trigger_restart_framework
     start nvram_daemon
     class_start main
     class_start late_start
-    start permission_check
 
 on property:vold.decrypt=trigger_shutdown_framework
     class_reset late_start
@@ -364,6 +336,7 @@ service logd /system/bin/logd
     socket logdr seqpacket 0666 logd logd
     socket logdw dgram 0222 logd logd
     seclabel u:r:logd:s0
+    disabled
 
 service console /system/bin/sh
     class core
@@ -389,7 +362,6 @@ service adbd /sbin/adbd --root_seclabel=u:r:su:s0
 service vold /system/bin/vold
     class core
     socket vold stream 0660 root mount
-    ioprio be 2
 
 # One shot invocation to deal with encrypted volume.
 service defaultcrypto /system/bin/vdc --wait cryptfs mountdefaultencrypted
@@ -411,12 +383,14 @@ service encrypt /system/bin/vdc --wait cryptfs enablecrypto inplace default
 service thermal_manager /system/bin/thermal_manager
     user root
     oneshot
+    disabled
 
 service permission_check /system/bin/permission_check
     class main
     user root
     group system radio
     oneshot
+    disabled
 
 service ccci_fsd /system/bin/ccci_fsd 0
     user radio
@@ -433,6 +407,7 @@ service nvram_daemon /system/bin/nvram_daemon
     user root
     group system
     oneshot
+    disabled
 
 service installd /system/bin/installd
     class main
